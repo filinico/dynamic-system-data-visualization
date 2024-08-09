@@ -1,7 +1,7 @@
 import "server-only";
 
-import { getAgentExecutor } from "./ai/chain";
-import { exposeEndpoints, streamRunnableUI } from "./utils/server";
+import { agentExecutorV } from "./ai/chain";
+import { exposeEndpoints, streamRunnableUI } from "../utils/server";
 import { ChatMessage } from "@langchain/core/messages";
 
 async function agent(inputs: {
@@ -9,9 +9,8 @@ async function agent(inputs: {
   chat_history: [role: string, content: string][];
 }) {
   "use server";
-  console.log(`agent input: ${JSON.stringify(inputs)}`);
-  const agentExecutor = await getAgentExecutor()
-  return streamRunnableUI(agentExecutor, {
+
+  return streamRunnableUI(agentExecutorV, {
     input: inputs.input,
     chat_history: inputs.chat_history.map(
       ([role, content]) => new ChatMessage(content, role),
@@ -19,4 +18,4 @@ async function agent(inputs: {
   });
 }
 
-export const EndpointsContext = exposeEndpoints({ agent });
+export const EndpointsContextV = exposeEndpoints({ agent });
