@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { ISpec, VChart } from "@visactor/react-vchart";
 
-export function Graph(props: {chartId: string, spec: ISpec}){
+export function Graph(props: {chartId: string, spec: ISpec, width?: number, height: number}) {
   const chartRef = useRef(null);
   return (
     <div>
@@ -11,8 +11,8 @@ export function Graph(props: {chartId: string, spec: ISpec}){
         ref={chartRef}
         key={props.chartId}
         spec={props.spec}
-        width={800}
-        height={600}
+        width={props.width}
+        height={props.height}
       />
     </div>
   )

@@ -32,7 +32,7 @@ export default function RootLayout({
         <meta name="twitter:image" content="/images/og-image.png" />
       </head>
       <body className={publicSans.className}>
-        <div className="flex flex-col p-4 md:p-12 h-[100vh]">
+        <div className="flex flex-col p-2 md:p-4 h-[90vh] max-h-[90%]">
           {children}
         </div>
       </body>

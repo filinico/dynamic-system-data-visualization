@@ -41,6 +41,8 @@ let DASHBOARD: ChartDetails[]  = [
   CHARTS_BY_DESCRIPTION[0]
 ]
 
+export const getDashboard = () => DASHBOARD
+
 const addChartToDashboardTool = tool(
   async (input) => {
     const chartsInDashboard = DASHBOARD.filter((chartDetails) => chartDetails.description === input.query);
@@ -97,7 +99,7 @@ const graphGenerationTool = tool(
       const chartId = uuidV4();
       stream.done(
         <>
-          <Graph spec={existingChartDetails[0].specWithData} chartId={chartId} key={chartId} />
+          <Graph width={380} height={275} spec={existingChartDetails[0].specWithData} chartId={chartId} key={chartId} />
         </>
       );
       return "The chart has been generated and could be added to the dashboard if the user wants to.";
@@ -139,7 +141,7 @@ const graphGenerationTool = tool(
       const chartId = uuidV4();
       stream.done(
         <>
-          <Graph spec={specWithData} chartId={chartId} key={chartId} />
+          <Graph width={380} height={275} spec={specWithData} chartId={chartId} key={chartId} />
         </>
       );
     } catch (error) {
@@ -157,7 +159,7 @@ const graphGenerationTool = tool(
         </>
       )
       console.error(`error loading the data: ${error}`);
-      throw new Error("An error occurred while loading the data. Do not retry the GenerateChart tool.");
+      return "An error occurred while loading the data. Do not retry the GenerateChart tool.";
     }
 
     return "The chart has been generated and could be added to the dashboard if the user wants to.";
