@@ -3,129 +3,206 @@ import {
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
-import { ChatOpenAI } from "@langchain/openai";
+import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
-import { Place } from "@/app/generative_ui/components/place";
 import { createRunnableUI } from "../utils/server";
-import { search, images } from "./tools";
-import { Images } from "../components/image";
+import {
+  extractResponseItemFromGraphQL,
+  generateFieldsDefinition,
+  generateGraphQL,
+  graphGeneration,
+  loadData
+} from "./tools";
 import { tool } from "@langchain/core/tools";
+import { Graph } from "@/app/generative_ui/components/Graph";
+import {v4 as uuidv4} from "uuid";
 
-const searchTool = tool(
+const loadDataTool = tool(
   async (input, config) => {
-    console.log(`searchTool input: ${JSON.stringify(input)}`);
+    console.log(`loadDataTool: ${JSON.stringify(input)}`);
     const stream = await createRunnableUI(config);
-    stream.update(<div>Searching the internet...</div>);
+    stream.update(<div className="flex gap-2 flex-wrap justify-end">
+      <span>Starting LoadData tool...</span>
+    </div>);
+    const gqlQuery = await generateGraphQL(input.query);
+    console.log(`graphQL query: ${gqlQuery}`);
 
-    const result = await search(input);
+    const fieldName = await extractResponseItemFromGraphQL(gqlQuery)
+    console.log(`fieldName: ${fieldName}`);
 
+    /*const getPayments = `query ListPayments {
+            listPayments {
+                id
+                currencyCode
+                paymentType
+                amount
+                status
+                supplierName
+                bank
+                cardType
+            }
+        }
+    `*/
+    let result = ""
+    try {
+      result = await loadData(gqlQuery, fieldName);
+      console.log(`loadDataTool result: ${result}`);
+    } catch (error) {
+      const errorMessage = `${error}`
+      /*stream.done(<div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Generated GraphQL query: </span><span>{gqlQuery}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Extracted returned item: </span><span>{fieldName}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>An error occurred while loading the data: {errorMessage}</span>
+        </div>
+      </div>)*/
+      console.error(`error loading the data: ${error}`);
+      throw new Error("An error occurred while loading the data. Do not call the GenerateGraph tool. Do not try to load the data again.");
+    }
+
+    if (result === "") {
+      /*stream.done(<div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Generated GraphQL query: </span><span>{gqlQuery}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Extracted returned item: </span><span>{fieldName}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>No data available</span>
+        </div>
+      </div>)*/
+      console.log("No data available. Do not retry. Do not call the GenerateGraph tool.");
+      return "No data available. Do not call the GenerateGraph tool. Do not try to load the data again.";
+    }
+
+    /*stream.done(
+      <div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Generated GraphQL query: </span><span>{gqlQuery}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Extracted returned item: </span><span>{fieldName}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Successfully loaded data: </span><span>{result}</span>
+        </div>
+      </div>
+    );*/
     stream.done(
-      <div className="flex gap-2 flex-wrap justify-end">
-        {JSON.parse(result).map((place: any, index: number) => (
-          <Place place={place} key={index} />
-        ))}
-      </div>,
+      <div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Successfully loaded data</span>
+        </div>
+      </div>
     );
-    console.log(`searchTool result: ${result}`);
 
     return result;
   },
   {
-    name: "SerpAPI",
+    name: "LoadGraphData",
     description:
-      "A search engine. useful for when you need to answer questions about current events. input should be a search query.",
-    schema: z.object({ query: z.string() }),
+      "load graph data in order to generate a graph. input should be the user question",
+    schema: z.object({ query: z.string() })
+  }
+);
+
+const graphGenerationTool = tool(
+  async (input, config) => {
+    console.log(`graphGenerationTool: ${JSON.stringify(input)}`);
+
+    if (input.data && input.data !== "" && (input.data === "{}" || input.data === "[]")) {
+      console.log("No data available. Cannot generate the graph.");
+      return "No data available. Cannot generate the graph. Do not try to load the data again."
+    }
+
+    const chartId = uuidv4()
+    const stream = await createRunnableUI(config);
+    stream.update(<div className="flex gap-2 flex-wrap justify-end">
+      <span>Starting GraphGeneration tool...</span>
+    </div>)
+    console.log(`calling graphGeneration`);
+    const result = await graphGeneration(input);
+    console.log(`graphGenerationTool result: ${JSON.stringify(result)}`);
+    stream.done(
+      <Graph
+        spec={result}
+        chartId={chartId}
+        key={chartId}
+      />,
+    );
+
+    return "The graph has been generated successfully and rendered to the user.";
+  },
+  {
+    name: "GenerateGraph",
+    description: "generate a graph based on loaded data and show the graph to the user. input should be a generate graph query.",
+    schema: z.object({
+      query: z.string().describe("The user input to generate the graph"),
+      data: z.string().describe("The data loaded as JSON string for the graph"),
+    }),
   },
 );
 
-const imagesTool = tool(
+const schemaTool = tool(
   async (input, config) => {
-    console.log(`imagesTool input: ${JSON.stringify(input)}`);
+    console.log(`schemaTool: ${JSON.stringify(input)}`);
     const stream = await createRunnableUI(config);
-    stream.update(<div>Searching...</div>);
+    stream.update(<div className="flex gap-2 flex-wrap justify-end">
+      <span>Starting Schema definition tool...</span>
+    </div>);
 
-    const result = await images(input);
+    const schemaResult = await generateFieldsDefinition(input.query);
+
     stream.done(
-      <Images
-        images={result.images_results
-          .map((image) => image.thumbnail)
-          .slice(0, input.limit)}
-      />,
+      <div>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <span>Found schema definition</span>
+        </div>
+      </div>
     );
-    console.log(`imagesTool result: ${JSON.stringify(result)}`);
-    return `[Returned ${result.images_results.length} images]`;
+
+    return schemaResult;
   },
   {
-    name: "Images",
-    description: "A tool to search for images. input should be a search query.",
-    schema: z.object({
-      query: z.string().describe("The search query used to search for cats"),
-      limit: z.number().describe("The number of pictures shown to the user"),
-    }),
-  },
+    name: "SchemaTool",
+    description:
+      "Define which fields are available in order to generate a graph. input should be the user question",
+    schema: z.object({ query: z.string() })
+  }
 );
 
 const prompt = ChatPromptTemplate.fromMessages([
   [
     "system",
-    `You are a helpful assistant that takes a question and finds the most appropriate tool or tools to execute, along with the parameters required to run the tool.`,
+    `You are a helpful assistant that takes a question and finds the most appropriate tool or tools to execute, along with the parameters required to run the tool.
+    if any errors occur, do not retry and explain to the user that data are not available. Do not call the GenerateGraph tool. Do not pass fake data to the GenerateGraph tool.
+    Using the tools you can generate charts based on the user query without specifying any data, only the field names are sufficient.
+    `,
   ],
   new MessagesPlaceholder("chat_history"),
   ["human", "{input}"],
   new MessagesPlaceholder("agent_scratchpad"),
 ]);
 
-const tools = [searchTool, imagesTool];
-/*
-const llm = new ChatOpenAI({
-  model: "llama3.1",
-  apiKey: 'ollama',
-  configuration: {
-    baseURL: 'http://localhost:11434/v1',
-    apiKey: 'ollama',
-  },
+const llm = new AzureChatOpenAI({
+  model: "gpt-4o-2024-08-06",
+  //verbose: true,
   temperature: 0,
+  maxTokens: undefined,
+  maxRetries: 2,
   streaming: true,
-});*/
-const getLlm = async () => {
-  const sandUrl = process.env.SAND_URL
-  const sandHeaders = new Headers();
-  const sandClientId = process.env.SAND_CLIENT_ID
-  const sandClientSecret = process.env.SAND_CLIENT_SECRET
-  const basicAuth = Buffer.from(sandClientId + ":" + sandClientSecret).toString('base64')
-  console.log(`basicAuth: ${basicAuth}`);
-  sandHeaders.set('Authorization', 'Basic ' + basicAuth);
-  const response = await fetch(sandUrl!, {
-  method:'POST',
-  headers: sandHeaders,
-  body: new URLSearchParams({
-  'grant_type': 'client_credentials',
-  'scope': 'coupa',
-  })
-  })
-  const jsonResponse = await response.json()
-  console.log(`jsonResponse: ${JSON.stringify(jsonResponse)}`);
-  return new ChatOpenAI({
-  temperature: 0.8,
-  model: "gpt-35-turbo",
-  apiKey: 'coupa',
-  configuration: {
-  baseURL: `${process.env.GEN_AI_URL}/v1/openai/`,
-  apiKey: 'coupa',
-  defaultHeaders: {
-  "X-Coupa-Application": "default",
-  "X-Coupa-Tenant": "localhost",
-  "Content-Type": "application/json",
-  "Authorization": `bearer ${jsonResponse.access_token}`,
-  }
-  }
-  });
-}
+});
 
-export const getAgentExecutor = async () => {
-  const llm = await getLlm()
-  return new AgentExecutor({
-    agent: createToolCallingAgent({ llm, tools, prompt }),
-    tools,
-  });
-}
+const tools = [loadDataTool, graphGenerationTool, schemaTool];
+
+export const agentExecutor = new AgentExecutor({
+  agent: createToolCallingAgent({ llm, tools, prompt }),
+  tools,
+  //verbose: true,
+  handleParsingErrors: "On any tool error, do not retry and explain to the user that data are not available. Do not call the GenerateGraph tool. Do not pass fake data to the GenerateGraph tool."
+});
