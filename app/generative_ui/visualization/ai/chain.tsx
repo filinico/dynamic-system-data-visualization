@@ -190,7 +190,7 @@ const prompt = ChatPromptTemplate.fromMessages([
 ]);
 
 const llm = new AzureChatOpenAI({
-  model: "gpt-4o-2024-05-13",
+  model: "gpt-4o-2024-08-06",
   //verbose: true,
   temperature: 0,
   maxTokens: undefined,

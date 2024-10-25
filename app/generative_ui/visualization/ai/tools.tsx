@@ -10,8 +10,8 @@ export async function graphGeneration(input: { query: string, data: string }) {
     model: "gpt-llama", //Specify the model you specify
   })*/
   const vmind = new VMind({
-    url: "https://genai-dev-coupadev-eastus2.openai.azure.com/openai/deployments/gpt-4o-2024-05-13/chat/completions?api-version=2024-02-01", //Specify your LLM service url. The default is https://api.openai.com/v1/chat/completions
-    model: "gpt-4o-2024-05-13", //Specify the model you specify
+    url: "https://genai-dev-coupadev-eastus.openai.azure.com/openai/deployments/gpt-4o-2024-08-06/chat/completions?api-version=2024-02-01", //Specify your LLM service url. The default is https://api.openai.com/v1/chat/completions
+    model: "gpt-4o-2024-08-06", //Specify the model you specify
     // @ts-ignore
     headers: { //Specify the header when calling the LLM service
       'api-key': process.env.AZURE_OPENAI_API_KEY //Your LLM API Key
@@ -68,7 +68,7 @@ type Query {
 
 export async function generateGraphQL(input: string) {
   const model = new AzureChatOpenAI({
-    model: "gpt-4o-2024-05-13",
+    model: "gpt-4o-2024-08-06",
     //verbose: true,
     temperature: 0.3,
     maxTokens: undefined,
@@ -92,7 +92,7 @@ export async function generateGraphQL(input: string) {
 
 export async function generateFieldsDefinition(input: string) {
   const model = new AzureChatOpenAI({
-    model: "gpt-4o-2024-05-13",
+    model: "gpt-4o-2024-08-06",
     //verbose: true,
     temperature: 0.3,
     maxTokens: undefined,
@@ -113,7 +113,7 @@ export async function generateFieldsDefinition(input: string) {
 
 export async function extractResponseItemFromGraphQL(gqlQuery: string) {
   const model = new AzureChatOpenAI({
-    model: "gpt-4o-2024-05-13",
+    model: "gpt-4o-2024-08-06",
     //verbose: true,
     temperature: 0.3,
     maxTokens: undefined,
