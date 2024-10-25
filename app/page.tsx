@@ -17,7 +17,7 @@ export default function Home() {
       </p>
       <p>
         <a
-          href="/generative_ui/visualization"
+          href="/generative_ui"
         >
           Try it out ✨
         </a>

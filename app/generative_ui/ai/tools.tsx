@@ -1,44 +1,59 @@
 import VMind from "@visactor/vmind";
-import { ApolloClient, gql, InMemoryCache, TypedDocumentNode } from "@apollo/client";
-import { query } from "@visactor/calculator";
+import { ApolloClient, gql, InMemoryCache } from "@apollo/client";
 import { AzureChatOpenAI } from "@langchain/openai";
+import { ILLMOptions } from "@visactor/vmind/cjs/common/typings";
 
-export async function graphGeneration(input: { query: string, data: string }) {
-  console.log(`graphGeneration input: ${JSON.stringify(input)}`);
-  /*const vmind = new VMind({
-    url: 'http://localhost:11434/v1/chat/completions', //Specify your LLM service url. The default is https://api.openai.com/v1/chat/completions
-    model: "gpt-llama", //Specify the model you specify
-  })*/
+export function fillSpecWithData(specTemplate: any, dataset: any) {
+  const vmind = new VMind({})
+  return vmind.fillSpecWithData(specTemplate, dataset)
+}
+
+const model = new AzureChatOpenAI({
+  model: process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME,
+  temperature: 0.3,
+  maxTokens: undefined,
+  maxRetries: 2,
+});
+
+export async function graphGeneration(query: string, data: string) {
+  const ModelRequestFunc = async (prompt: string, userMessage: string, options: ILLMOptions | undefined) => {
+    const response = await model.invoke([
+      [
+        "system",
+        prompt,
+      ],
+      ["human", userMessage],
+    ]);
+    const content = response.content
+    const gptResponse = {
+      usage: {},
+      choices: [{
+        index: 0,
+        message: {
+          role: 'assistant',
+          content
+        }
+      }]
+    }
+    return gptResponse
+  }
+
   const vmind = new VMind({
-    url: "https://genai-dev-coupadev-eastus.openai.azure.com/openai/deployments/gpt-4o-2024-08-06/chat/completions?api-version=2024-02-01", //Specify your LLM service url. The default is https://api.openai.com/v1/chat/completions
-    model: "gpt-4o-2024-08-06", //Specify the model you specify
-    // @ts-ignore
-    headers: { //Specify the header when calling the LLM service
-      'api-key': process.env.AZURE_OPENAI_API_KEY //Your LLM API Key
+    model: process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME,
+    customRequestFunc: {
+      chartAdvisor: ModelRequestFunc,
+      dataQuery: ModelRequestFunc,
     }
   })
 
-  const dataset = JSON.parse(input.data)
-  const fieldInfo = vmind.getFieldInfo(dataset);
-  const { spec, time } = await vmind.generateChart(input.query, fieldInfo, dataset);
-  console.log(`graphGeneration spec: ${JSON.stringify(spec)}`);
-  return spec;
+  const sourceDataset = JSON.parse(data)
+  const sourceFieldInfo = vmind.getFieldInfo(sourceDataset);
+  const { fieldInfo, dataset } = await vmind.dataQuery(query, sourceFieldInfo, sourceDataset);
+  const { spec, time } = await vmind.generateChart(query, fieldInfo, undefined, {
+    enableDataQuery: true,
+  });
+  return { spec, dataset };
 }
-/*
-interface Payment {
-  id: number
-  currencyCode: string
-  paymentType: string
-  amount: number
-  status: string
-  supplierName: string
-  bank: string
-  cardType: string
-}
-
-interface PaymentsData {
-  listPayments: Payment[]
-}*/
 
 const gqlSchema = `
 "A payment representing a money transaction between the customer and its supplier, executed by a bank"
@@ -67,13 +82,6 @@ type Query {
 `
 
 export async function generateGraphQL(input: string) {
-  const model = new AzureChatOpenAI({
-    model: "gpt-4o-2024-08-06",
-    //verbose: true,
-    temperature: 0.3,
-    maxTokens: undefined,
-    maxRetries: 2,
-  });
   const response = await model.invoke([
     [
       "system",
@@ -83,21 +91,12 @@ export async function generateGraphQL(input: string) {
     ],
     ["human", input],
   ]);
-  const gqlResult = response.content.toString()
-  console.log(`gqlResult message: ${gqlResult}`);
-  /*const gqlQueryResult = gqlResult.replace(/graphql/g, "query MyQuery")
-  console.log(`gqlQueryResult: ${gqlQueryResult}`);*/
+  let gqlResult = response.content.toString()
+  gqlResult = gqlResult.replaceAll("`", "").replace("graphql\n", "")
   return gqlResult;
 }
 
 export async function generateFieldsDefinition(input: string) {
-  const model = new AzureChatOpenAI({
-    model: "gpt-4o-2024-08-06",
-    //verbose: true,
-    temperature: 0.3,
-    maxTokens: undefined,
-    maxRetries: 2,
-  });
   const response = await model.invoke([
     [
       "system",
@@ -106,19 +105,10 @@ export async function generateFieldsDefinition(input: string) {
     ],
     ["human", input],
   ]);
-  const schemaResult = response.content.toString()
-  console.log(`schemaResult message: ${schemaResult}`);
-  return schemaResult;
+  return response.content.toString();
 }
 
 export async function extractResponseItemFromGraphQL(gqlQuery: string) {
-  const model = new AzureChatOpenAI({
-    model: "gpt-4o-2024-08-06",
-    //verbose: true,
-    temperature: 0.3,
-    maxTokens: undefined,
-    maxRetries: 2,
-  });
   const response = await model.invoke([
     [
       "system",
@@ -127,32 +117,14 @@ export async function extractResponseItemFromGraphQL(gqlQuery: string) {
     ],
     ["human", gqlQuery],
   ]);
-  const resultMessage = response.content.toString()
-  console.log(`resultMessage: ${resultMessage}`);
-  return resultMessage
+  return response.content.toString();
 }
 
 export async function loadData(query: string, fieldName: string ) {
-  console.log(`loadData query: ${query}`);
   const client = new ApolloClient({
     uri: 'http://localhost:4000/',
     cache: new InMemoryCache({addTypename: false}),
   });
-  /*
-  const getPayments: TypedDocumentNode<PaymentsData> = gql`
-      query ListPayments {
-          listPayments {
-              id
-              currencyCode
-              paymentType
-              amount
-              status
-              supplierName
-              bank
-              cardType
-          }
-      }
-  `*/
   const gqlQuery = gql`${query}`
   const result = await client.query({
     query: gqlQuery,
