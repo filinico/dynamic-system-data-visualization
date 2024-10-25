@@ -1,8 +1,6 @@
 import "./globals.css";
 import { Public_Sans } from "next/font/google";
 
-import { Navbar } from "@/components/Navbar";
-
 const publicSans = Public_Sans({ subsets: ["latin"] });
 
 export default function RootLayout({
@@ -13,29 +11,28 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>LangChain + Next.js Template</title>
-        <link rel="shortcut icon" href="/images/favicon.ico" />
+        <title>Dynamic charts generation</title>
+        <link rel="shortcut icon" href="/images/favicon_sparkles.ico" />
         <meta
           name="description"
-          content="Starter template showing how to use LangChain in Next.js projects. See source code and deploy your own at https://github.com/langchain-ai/langchain-nextjs-template!"
+          content="Generate charts on demand based on user prompts without uploading data"
         />
-        <meta property="og:title" content="LangChain + Next.js Template" />
+        <meta property="og:title" content="Dynamic charts generation" />
         <meta
           property="og:description"
-          content="Starter template showing how to use LangChain in Next.js projects. See source code and deploy your own at https://github.com/langchain-ai/langchain-nextjs-template!"
+          content="Generate charts on demand based on user prompts without uploading data"
         />
         <meta property="og:image" content="/images/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="LangChain + Next.js Template" />
+        <meta name="twitter:title" content="Dynamic charts generation" />
         <meta
           name="twitter:description"
-          content="Starter template showing how to use LangChain in Next.js projects. See source code and deploy your own at https://github.com/langchain-ai/langchain-nextjs-template!"
+          content="Generate charts on demand based on user prompts without uploading data"
         />
         <meta name="twitter:image" content="/images/og-image.png" />
       </head>
       <body className={publicSans.className}>
         <div className="flex flex-col p-4 md:p-12 h-[100vh]">
-          <Navbar></Navbar>
           {children}
         </div>
       </body>
