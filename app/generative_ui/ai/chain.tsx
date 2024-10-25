@@ -3,7 +3,7 @@ import {
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
 import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
-import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
+import { AzureChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
 import { createRunnableUI } from "../utils/server";
 import {
